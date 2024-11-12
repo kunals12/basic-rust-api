@@ -1,11 +1,30 @@
 use actix_web::{
-    get,               // Macro for defining HTTP GET request handlers
-    web::{self, Path}, // `web` for handling web resources, `Path` for capturing URL path parameters
+    get,
+    http::StatusCode,
+    web::{self, Json, Path},
     App,
     HttpResponse,
     HttpServer,
     Responder, // Core Actix components for setting up the web server and responses
 };
+use serde::Serialize;
+
+#[derive(Serialize)]
+struct User {
+    first_name: String,
+    last_name: String,
+    age: u8,
+}
+
+impl User {
+    pub fn new(first_name: String, last_name: String, age: u8) -> Self {
+        User {
+            first_name,
+            last_name,
+            age,
+        }
+    }
+}
 
 // Define a basic route that responds to GET requests at "/hello"
 #[get("/hello")]
@@ -18,15 +37,17 @@ async fn hello() -> impl Responder {
 
 // Define a route that accepts dynamic path parameters: `/hello/{firstname}/{lastname}`
 #[get("hello/{firstname}/{lastname}")]
-async fn hello_user(params: Path<(String, u32)>) -> impl Responder {
+async fn hello_user(params: Path<(String, String)>) -> impl Responder {
     // Format the dynamic parameters into a greeting message
-    let response = format!("Hello {} {}", params.0, params.1);
+    let response = User::new(params.0.clone(), params.1.clone(), 18);
     // Return the response as the HTTP body
-    response
+    (Json(response), StatusCode::OK)
 }
 
 #[actix_web::main] // Macro to mark the main async function for running Actix's async runtime
 async fn main() -> std::io::Result<()> {
+    let port: u16 = 8080;
+
     // Initialize the server and define the routes and services
     let server = HttpServer::new(|| {
         App::new()
@@ -39,7 +60,7 @@ async fn main() -> std::io::Result<()> {
     .bind(("127.0.0.1", 8080))?
     // Start the server asynchronously
     .run();
-
+    println!("Server is running on port {}", port);
     // Await the server to keep it running until it's stopped
     server.await
 }
