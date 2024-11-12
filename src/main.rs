@@ -13,6 +13,7 @@ async fn main() -> std::io::Result<()> {
             .service(hello)
             // Register the `hello_user` service route, which includes path parameters
             .service(hello_user)
+            .service(create_user)
     })
     // Bind the server to a local address and port (127.0.0.1:8080)
     .bind(("127.0.0.1", 8080))?

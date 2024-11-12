@@ -1,5 +1,5 @@
 pub mod user;
-pub use user::hello_user;
+pub use user::{create_user, hello_user};
 pub mod home;
 pub use home::hello;
 
