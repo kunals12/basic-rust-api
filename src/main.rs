@@ -2,7 +2,7 @@ use actix_web::{App, HttpServer};
 mod routes;
 use routes::*;
 
-#[actix_web::main] // Macro to mark the main async function for running Actix's async runtime
+#[tokio::main] // Macro to mark the main async function for running Actix's async runtime
 async fn main() -> std::io::Result<()> {
     let port: u16 = 8080;
 

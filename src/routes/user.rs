@@ -1,3 +1,4 @@
+use crate::routes::logging;
 use actix_web::{
     get,
     http::StatusCode,
@@ -26,6 +27,8 @@ impl User {
 // Define a route that accepts dynamic path parameters: `/hello/{firstname}/{lastname}`
 #[get("{firstname}/{lastname}")]
 pub async fn hello_user(params: Path<(String, String)>) -> impl Responder {
+    let route = format!("GET: /{}/{}", params.0.clone(), params.1.clone());
+    logging(&route);
     // Format the dynamic parameters into a greeting message
     let response = User::new(params.0.clone(), params.1.clone(), 18);
     // Return the response as the HTTP body
