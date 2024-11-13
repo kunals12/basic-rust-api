@@ -1,4 +1,4 @@
-use actix_web::{App, HttpServer};
+use actix_web::{web::Data, App, HttpServer};
 mod routes;
 use routes::*;
 mod database;
@@ -16,12 +16,14 @@ async fn main() -> std::io::Result<()> {
     // Initialize the server and define the routes and services
     let server = HttpServer::new(move || {
         App::new()
-            .app_data(database.clone())
+            .app_data(Data::new(database.clone()))
             // Register the `hello` service route with the server
             .service(hello)
+            .service(get_all_todos)
             // Register the `hello_user` service route, which includes path parameters
             .service(hello_user)
             .service(create_user)
+            .service(create_new_todo)
     })
     // Bind the server to a local address and port (127.0.0.1:8080)
     .bind(("127.0.0.1", 8080))?
