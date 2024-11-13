@@ -34,7 +34,7 @@ impl User {
 // Define a route that accepts dynamic path parameters: `/hello/{firstname}/{lastname}`
 #[get("{firstname}/{lastname}")]
 pub async fn hello_user(params: Path<(String, String, u8)>) -> impl Responder {
-    let route = format!("GET: /{}/{}", params.0.clone(), params.1.clone(), params.2);
+    let route = format!("GET: /{}/{}", params.0.clone(), params.1.clone());
     logging(&route);
     // Format the dynamic parameters into a greeting message
     let response = User::new(params.0.clone(), params.1.clone(), params.2);
