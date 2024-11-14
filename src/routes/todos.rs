@@ -1,7 +1,5 @@
 use actix_web::{
-    get, post,
-    web::{Data, Json},
-    HttpResponse, Responder,
+    get, post, web::{Data, Json}, HttpResponse, Responder
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{Error, FromRow, MySqlPool}; // SQLx types: Error for error handling, FromRow for deserialization, and MySqlPool for the database pool
@@ -23,6 +21,14 @@ pub struct Todo {
     status: bool,
 }
 
+#[derive(Serialize, Deserialize)]
+pub struct UpdateTodoTitle {
+    id: i32,
+    title: Option<String>,
+    description: Option<String>,
+    status: Option<bool>
+}
+
 // Struct to send error messages in JSON format if a database error occurs
 #[derive(Serialize, Deserialize)]
 struct TypeDbError {
@@ -32,8 +38,6 @@ struct TypeDbError {
 // Endpoint to create a new todo entry
 #[post("/todo/create")]
 pub async fn create_new_todo(db: Data<MySqlPool>, body: Json<CreateNewTodos>) -> impl Responder {
-    println!("1");
-
     // Execute SQL query to insert a new todo into the database
     // "?" placeholders bind values safely to avoid SQL injection
     let response = sqlx::query("INSERT INTO todos(title, description) VALUES(?,?)")
@@ -41,7 +45,6 @@ pub async fn create_new_todo(db: Data<MySqlPool>, body: Json<CreateNewTodos>) ->
         .bind(&body.description) // Bind description field from request body
         .execute(&**db) // Execute query using the database connection
         .await;
-    println!("123");
 
     // Match on the result to handle success or error cases
     match response {
@@ -75,5 +78,52 @@ pub async fn get_all_todos(db: Data<MySqlPool>) -> impl Responder {
                 error: e.to_string(),
             })
         }
+    }
+}
+
+// Endpoint to update todo
+#[post("todo/update")]
+pub async fn update_todo(db: Data<MySqlPool>, body: Json<UpdateTodoTitle>) -> impl Responder {
+
+    let mut fields_to_update = Vec::new();
+
+    // Add fields to update query conditionally based on their presence
+    if let Some(title) = &body.title {
+        fields_to_update.push(format!("title = '{}'", title));
+    }
+
+    if let Some(description) = &body.description {
+        fields_to_update.push(format!("description = '{}'", description));
+    }
+
+    if let Some(status) = body.status {
+        fields_to_update.push(format!("status = {}", status));
+    }
+
+    if fields_to_update.is_empty() {
+        return HttpResponse::BadRequest().json(TypeDbError {
+            error: "No fields to update".to_string(),
+        });
+    }
+
+    // Construct the SQL query
+    let query = format!("UPDATE todos SET {} WHERE id = ?", fields_to_update.join(", "));
+    
+    // Execute the query with the ID parameter
+    let response = sqlx::query(&query)
+        .bind(body.id)
+        .execute(&**db)
+        .await;
+
+    match response {
+        Ok(_) => HttpResponse::Ok().json(UpdateTodoTitle {
+            id: body.id,
+            title: body.title.clone(),
+            description: body.description.clone(),
+            status: body.status
+        }),
+        Err(e) => HttpResponse::InternalServerError().json(TypeDbError {
+            error: e.to_string()
+        })
     }
 }
