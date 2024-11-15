@@ -2,7 +2,8 @@ use actix_web::{
     delete, get, post, web::{Data, Json, Path}, HttpResponse, Responder
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{Error, FromRow, MySqlPool}; // SQLx types: Error for error handling, FromRow for deserialization, and MySqlPool for the database pool
+use sqlx::{Error, FromRow, MySqlPool};
+use crate::routes::TypeDbError; // SQLx types: Error for error handling, FromRow for deserialization, and MySqlPool for the database pool
 
 // Struct to capture the data needed to create a new Todo
 #[derive(Serialize, Deserialize)]
@@ -29,11 +30,6 @@ pub struct UpdateTodoTitle {
     status: Option<bool>
 }
 
-// Struct to send error messages in JSON format if a database error occurs
-#[derive(Serialize, Deserialize)]
-struct TypeDbError {
-    error: String, // Stores the error message to return in the response
-}
 
 // Endpoint to create a new todo entry
 #[post("/todo/create")]

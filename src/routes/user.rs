@@ -1,55 +1,54 @@
-use crate::routes::logging;
+use crate::routes::{logging, TypeDbError};
 use actix_web::{
-    get,
-    http::StatusCode,
-    post,
-    web::{Json, Path},
-    Responder, // Core Actix components for setting up the web server and responses
+    post, web::{Data, Json}, HttpResponse, Responder // Core Actix components for setting up the web server and responses
 };
+use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
+use sqlx::MySqlPool;
 
 #[derive(Serialize, Deserialize)]
-pub struct User {
-    first_name: String,
-    last_name: String,
-    age: u8,
+pub struct CreateUserRequest {
+    username: String,
+    email: String,
+    password: String,
 }
+
 
 #[derive(Serialize, Deserialize)]
 struct CreateUserResponse {
-    id: u32,
-    user: User,
+    id: i32,
+    username: String,
+    email: String,
 }
 
-impl User {
-    pub fn new(first_name: String, last_name: String, age: u8) -> Self {
-        User {
-            first_name,
-            last_name,
-            age,
-        }
-    }
+fn hash_password(password: &str) -> String {
+    hash(password, DEFAULT_COST).expect("Error Hashing Password")
 }
 
-// Define a route that accepts dynamic path parameters: `/hello/{firstname}/{lastname}`
-#[get("{firstname}/{lastname}")]
-pub async fn hello_user(params: Path<(String, String, u8)>) -> impl Responder {
-    let route = format!("GET: /{}/{}", params.0.clone(), params.1.clone());
-    logging(&route);
-    // Format the dynamic parameters into a greeting message
-    let response = User::new(params.0.clone(), params.1.clone(), params.2);
-    // Return the response as the HTTP body
-    (Json(response), StatusCode::OK)
+fn verify_password(password: &str, hash_password: &str) -> bool{
+    verify(password, hash_password).unwrap_or(false)
 }
+
+
 
 #[post("/user/create")]
-pub async fn create_user(user: Json<User>) -> impl Responder {
-    logging("GET /user/create");
-    (
-        Json(CreateUserResponse {
-            id: 1,
-            user: user.0,
+pub async fn create_user(db: Data<MySqlPool>, user: Json<CreateUserRequest>) -> impl Responder {
+    logging("POST /user/create");
+
+    let hash_password: String = hash_password(&user.password);
+
+    let result = sqlx::query("INSERT INTO users (username, email, password) VALUES (?,?,?)")
+    .bind(user.username.clone())
+    .bind(user.email.clone()).bind(hash_password).execute(&**db).await;
+
+    match result {
+        Ok(data) => HttpResponse::Created().json(CreateUserResponse {
+            id: data.last_insert_id() as i32,
+            username: user.username.clone(),
+            email: user.email.clone(),
         }),
-        StatusCode::CREATED,
-    )
+        Err(err) => HttpResponse::InternalServerError().json(TypeDbError {
+            error: err.to_string()
+        })
+    }
 }

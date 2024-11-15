@@ -3,6 +3,8 @@ mod routes;
 use routes::*;
 mod database;
 use database::*;
+mod models;
+
 
 #[tokio::main] // Macro to mark the main async function for running Actix's async runtime
 async fn main() -> std::io::Result<()> {
@@ -21,7 +23,6 @@ async fn main() -> std::io::Result<()> {
             .service(hello)
             .service(get_all_todos)
             // Register the `hello_user` service route, which includes path parameters
-            .service(hello_user)
             .service(create_user)
             .service(create_new_todo)
             .service(update_todo)
