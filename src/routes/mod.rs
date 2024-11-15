@@ -15,3 +15,8 @@ pub fn logging(path: &str) {
 struct TypeDbError {
     error: String, // Stores the error message to return in the response
 }
+
+#[derive(Serialize, Deserialize)]
+struct Message {
+    msg: String,
+}
