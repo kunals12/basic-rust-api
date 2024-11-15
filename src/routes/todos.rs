@@ -1,5 +1,5 @@
 use actix_web::{
-    get, post, web::{Data, Json}, HttpResponse, Responder
+    delete, get, post, web::{Data, Json, Path}, HttpResponse, Responder
 };
 use serde::{Deserialize, Serialize};
 use sqlx::{Error, FromRow, MySqlPool}; // SQLx types: Error for error handling, FromRow for deserialization, and MySqlPool for the database pool
@@ -125,5 +125,23 @@ pub async fn update_todo(db: Data<MySqlPool>, body: Json<UpdateTodoTitle>) -> im
         Err(e) => HttpResponse::InternalServerError().json(TypeDbError {
             error: e.to_string()
         })
+    }
+}
+
+#[delete("todo/delete/{id}")]
+pub async fn delete_todo(db: Data<MySqlPool>, params:Path<i32>) -> impl Responder {
+    let response = sqlx::query("DELETE FROM todos WHERE id = ?").bind(params.into_inner()).execute(&**db).await;
+
+    // Handle the result of the query
+    match response {
+        Ok(result) => {
+            // Check if any row was affected (meaning a record was deleted)
+            if result.rows_affected() > 0 {
+                HttpResponse::Ok().json("Todo successfully deleted")
+            } else {
+                HttpResponse::NotFound().json("Todo not found")
+            }
+        }
+        Err(e) => HttpResponse::InternalServerError().json(format!("Database error: {}", e)),
     }
 }
