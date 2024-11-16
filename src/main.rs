@@ -3,6 +3,7 @@ mod routes;
 use routes::*;
 mod database;
 use database::*;
+use user::get_user_by_id;
 mod models;
 
 
@@ -24,6 +25,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_all_todos)
             // Register the `hello_user` service route, which includes path parameters
             .service(create_user)
+            .service(get_user_by_id)
             .service(create_new_todo)
             .service(update_todo)
             .service(delete_todo)

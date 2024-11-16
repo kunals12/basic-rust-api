@@ -1,13 +1,10 @@
 use crate::routes::{logging, Message, TypeDbError};
 use actix_web::{
-    post,
-    web::{Data, Json},
-    HttpResponse,
-    Responder, // Core Actix components for setting up the web server and responses
+    get, patch, post, web::{Data, Json, Path}, HttpResponse, Responder // Core Actix components for setting up the web server and responses
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
-use sqlx::MySqlPool;
+use sqlx::{prelude::FromRow, MySqlPool};
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateUserRequest {
@@ -16,11 +13,18 @@ pub struct CreateUserRequest {
     password: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, FromRow)]
 struct CreateUserResponse {
     id: i32,
     username: String,
     email: String,
+}
+
+#[derive(Serialize)]
+struct PatchUserResponse {
+    id: i32,
+    username: Option<String>,
+    email: Option<String>,
 }
 
 fn hash_password(password: &str) -> String {
@@ -75,3 +79,21 @@ pub async fn create_user(db: Data<MySqlPool>, user: Json<CreateUserRequest>) -> 
         }),
     }
 }
+
+#[get("/user/{id}")]
+pub async fn get_user_by_id(db: Data<MySqlPool>, params: Path<i32>) -> impl Responder {
+    // Fetch the user by ID
+    let user = sqlx::query_as::<_, CreateUserResponse>("SELECT id, username, email, created_at FROM users WHERE id = ?")
+        .bind(params.into_inner()) // Use params.0 to access the ID
+        .fetch_one(&**db) // Execute the query
+        .await;
+
+    // Handle the result
+    match user {
+        Ok(user) => HttpResponse::Ok().json(user), // Return user data as JSON
+        Err(sqlx::Error::RowNotFound) => HttpResponse::NotFound().json("User Not Found"), // Handle no row found
+        Err(e) => HttpResponse::InternalServerError().json(e.to_string()), // Handle other DB errors
+    }
+}
+
+
