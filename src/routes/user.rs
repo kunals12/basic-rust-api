@@ -1,10 +1,11 @@
 use crate::routes::{logging, Message, TypeDbError};
 use actix_web::{
-    get, patch, post, web::{Data, Json, Path}, HttpResponse, Responder // Core Actix components for setting up the web server and responses
+    get, post, web::{Data, Json, Path}, HttpResponse, Responder // Core Actix components for setting up the web server and responses
 };
 use bcrypt::{hash, verify, DEFAULT_COST};
 use serde::{Deserialize, Serialize};
 use sqlx::{prelude::FromRow, MySqlPool};
+use crate::routes::todos::Todo;
 
 #[derive(Serialize, Deserialize)]
 pub struct CreateUserRequest {
@@ -20,11 +21,12 @@ struct CreateUserResponse {
     email: String,
 }
 
-#[derive(Serialize)]
-struct PatchUserResponse {
-    id: i32,
-    username: Option<String>,
-    email: Option<String>,
+#[derive(Serialize, Deserialize)]
+pub struct UserWithTodosResponse {
+    pub id: i32,
+    pub username: String,
+    pub email: String,
+    pub todos: Vec<Todo>, // Array of todos for this user
 }
 
 fn hash_password(password: &str) -> String {
@@ -90,7 +92,22 @@ pub async fn get_user_by_id(db: Data<MySqlPool>, params: Path<i32>) -> impl Resp
 
     // Handle the result
     match user {
-        Ok(user) => HttpResponse::Ok().json(user), // Return user data as JSON
+        Ok(user) => {
+            let todos = sqlx::query_as(
+                "SELECT id, title, description, status FROM todos WHERE user_id = ?"
+            ).bind(user.id).fetch_all(&**db).await;
+
+            match todos {
+                Ok(todos) => HttpResponse::Ok().json(UserWithTodosResponse {
+                    id: user.id,
+                    username: user.username,
+                    email: user.email,
+                    todos, // Attach todos to the response
+                }),
+                Err(_) => HttpResponse::InternalServerError().json("Failed to fetch todos"),
+            }
+            // HttpResponse::Ok().json(user)
+        }, // Return user data as JSON
         Err(sqlx::Error::RowNotFound) => HttpResponse::NotFound().json("User Not Found"), // Handle no row found
         Err(e) => HttpResponse::InternalServerError().json(e.to_string()), // Handle other DB errors
     }

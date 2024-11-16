@@ -8,6 +8,7 @@ use crate::routes::TypeDbError; // SQLx types: Error for error handling, FromRow
 // Struct to capture the data needed to create a new Todo
 #[derive(Serialize, Deserialize)]
 struct CreateNewTodos {
+    user_id: i32,
     title: String,
     description: Option<String>, // Optional field
 }
@@ -36,9 +37,10 @@ pub struct UpdateTodoTitle {
 pub async fn create_new_todo(db: Data<MySqlPool>, body: Json<CreateNewTodos>) -> impl Responder {
     // Execute SQL query to insert a new todo into the database
     // "?" placeholders bind values safely to avoid SQL injection
-    let response = sqlx::query("INSERT INTO todos(title, description) VALUES(?,?)")
+    let response = sqlx::query("INSERT INTO todos(title, description, user_id) VALUES(?,?, ?)")
         .bind(&body.title) // Bind title field from request body
         .bind(&body.description) // Bind description field from request body
+        .bind(&body.user_id)
         .execute(&**db) // Execute query using the database connection
         .await;
 
